@@ -283,55 +283,112 @@ function renderRaceStartView(track) {
 	`
 }
 
-function resultsView(positions) {
-	userPlayer.driver_name += " (you)"
-	let count = 1
+// function resultsView(positions) {
+// 	userPlayer.driver_name += " (you)"
+// 	let count = 1
   
-	const results = positions.map(p => {
-		return `
-			<tr>
-				<td>
-					<h3>${count++} - ${p.driver_name}</h3>
-				</td>
-			</tr>
-		`
-	})
+// 	const results = positions.map(p => {
+// 		return `
+// 			<tr>
+// 				<td>
+// 					<h3>${count++} - ${p.driver_name}</h3>
+// 				</td>
+// 			</tr>
+// 		`
+// 	})
 
-	return `
-		<header>
-			<h1>Race Results</h1>
-		</header>
-		<main>
-			<h3>Race Results</h3>
-			<p>The race is done! Here are the final results:</p>
-			${results.join('')}
-			<a href="/race">Start a new race</a>
-		</main>
-	`
+// 	return `
+// 		<header>
+// 			<h1>Race Results</h1>
+// 		</header>
+// 		<main>
+// 			<h3>Race Results</h3>
+// 			<p>The race is done! Here are the final results:</p>
+// 			${results.join('')}
+// 			<a href="/race">Start a new race</a>
+// 		</main>
+// 	`
+// }
+
+
+function resultsView(positions) {
+    let userPlayer = positions.find(e => e.id === parseInt(store.player_id));
+    if (userPlayer) {
+        userPlayer.driver_name += " (you)";
+    }
+    let count = 1;
+
+    const results = positions.map(p => {
+        return `
+            <tr>
+                <td>
+                    <h3>${count++} - ${p.driver_name}</h3>
+                </td>
+            </tr>
+        `;
+    });
+
+    return `
+        <header>
+            <h1>Race Results</h1>
+        </header>
+        <main>
+            <h3>Race Results</h3>
+            <p>The race is done! Here are the final results:</p>
+            ${results.join('')}
+            <a href="/race">Start a new race</a>
+        </main>
+    `;
 }
 
+// function raceProgress(positions) {
+// 	let userPlayer = positions.find(e => e.id === parseInt(store.player_id))
+// 	userPlayer.driver_name += " (you)"
+
+// 	positions = positions.sort((a, b) => (a.segment > b.segment) ? -1 : 1)
+// 	let count = 1
+
+// 	const results = positions.map(p => {
+// 		return `
+// 			<tr>
+// 				<td>
+// 					<h3>${count++} - ${p.driver_name}</h3>
+// 				</td>
+// 			</tr>
+// 		`
+// 	})
+
+// 	return `
+// 		<table>
+// 			${results.join('')}
+// 		</table>
+// 	`
+// }
+
 function raceProgress(positions) {
-	let userPlayer = positions.find(e => e.id === parseInt(store.player_id))
-	userPlayer.driver_name += " (you)"
+    let userPlayer = positions.find(e => e.id === parseInt(store.player_id));
+    if (userPlayer) {
+        userPlayer.driver_name += " (you)";
+    }
 
-	positions = positions.sort((a, b) => (a.segment > b.segment) ? -1 : 1)
-	let count = 1
+    positions = positions.sort((a, b) => (a.segment > b.segment) ? -1 : 1);
+    let count = 1;
 
-	const results = positions.map(p => {
-		return `
-			<tr>
-				<td>
-					<h3>${count++} - ${p.driver_name}</h3>
-				</td>
-			</tr>
-		`
-	})
+    const results = positions.map(p => {
+        return `
+            <tr>
+                <td>
+                    <h3>${count++} - ${p.driver_name}</h3>
+                </td>
+            </tr>
+        `;
+    });
 
-	return `
-		<table>
-			${results.join('')}
-		</table>
-	`
+    return `
+        <table>
+            ${results.join('')}
+        </table>
+    `;
 }
 
 function renderAt(element, html) {
@@ -369,8 +426,16 @@ function getTracks() {
             }
             return response.json();
         })
+        .then(data => {
+            if (!Array.isArray(data)) {
+                console.error("Unexpected response format:", data);
+                return []; // Return an empty array as a fallback
+            }
+            return data;
+        })
         .catch(error => {
             console.error("Error fetching tracks:", error);
+            return []; // Return an empty array in case of any error
         });
 }
 
@@ -380,10 +445,16 @@ function getRacers() {
     return fetch(`${SERVER}/api/cars`)
         .then(response => {
             if (!response.ok) {
-                console.error(`HTTP error! Status: ${response.status}`);
-                return []; // Return an empty array as a fallback
+                throw new Error(`HTTP error! Status: ${response.status}`);
             }
             return response.json();
+        })
+        .then(data => {
+            if (!Array.isArray(data)) {
+                console.error("Unexpected response format:", data);
+                return []; // Return an empty array as a fallback
+            }
+            return data;
         })
         .catch(error => {
             console.error("Error fetching racers:", error);
@@ -393,40 +464,77 @@ function getRacers() {
 
 
 function createRace(player_id, track_id) {
-	player_id = parseInt(player_id)
-	track_id = parseInt(track_id)
-	const body = { player_id, track_id }
-	
-	return fetch(`${SERVER}/api/races`, {
-		method: 'POST',
-		...defaultFetchOpts(),
-		dataType: 'jsonp',
-		body: JSON.stringify(body)
-	})
-	.then(res => res.json())
-	.catch(err => console.log("Problem with createRace request::", err))
+    player_id = parseInt(player_id);
+    track_id = parseInt(track_id);
+    const body = { player_id, track_id };
+
+    return fetch(`${SERVER}/api/races`, {
+        method: 'POST',
+        ...defaultFetchOpts(),
+        body: JSON.stringify(body),
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log("Race created successfully:", data);
+        return data;
+    })
+    .catch(error => {
+        console.error("Problem with createRace request:", error);
+        throw error; // Re-throw the error to propagate it
+    });
 }
 
 function getRace(id) {
     return fetch(`${SERVER}/api/races/${id}`)
         .then(response => {
             if (!response.ok) {
-                console.error(`HTTP error! Status: ${response.status}`);
-                return null;  // Return null if there's an error
+                throw new Error(`HTTP error! Status: ${response.status}`);
             }
             return response.json();
         })
+        .then(data => {
+            if (!data || typeof data !== 'object') {
+                console.error("Unexpected response format:", data);
+                return null; // Return null if the response is not an object
+            }
+            return data;
+        })
         .catch(error => {
             console.error(`Error fetching race with ID ${id}:`, error);
-            return null;  // Return null in case of any other error
+            return null; // Return null in case of any error
         });
 }
 
 
-function startRace(id) {
-      
+// function startRace(id) {
+//     return fetch(`${SERVER}/api/races/${id}/start`, {
+//         method: 'POST',
+//         ...defaultFetchOpts(),
+//     })
+//     .then(response => {
+//         if (!response.ok) {
+//             console.error(`HTTP error! Status: ${response.status}`);
+//             throw new Error(`HTTP error! Status: ${response.status}`);
+//         }
+//         return response.json();
+//     })
+//     .then(data => {
+//         console.log("Race started successfully:", data);
+//         return data;
+//     })
+//     .catch(err => {
+//         console.log("Problem with starting the race request:", err);
+//         throw err; // Re-throw the error to propagate it
+//     });
+// }
 
-     fetch(`${SERVER}/api/races/${id}/start`, {
+function startRace(id) {
+    fetch(`${SERVER}/api/races/${id}/start`, {
         method: 'POST',
         ...defaultFetchOpts(),
     })
@@ -434,15 +542,34 @@ function startRace(id) {
         if (!response.ok) {
             console.error(`HTTP error! Status: ${response.status}`);
         }
-      
     })
     .catch(err => console.log("Problem with starting the race request:", err));
 }
 
+// function accelerate(id) {
+//     console.log(`Sending acceleration request to server for race with ID: ${id}`);
+
+//     return fetch(`${SERVER}/api/races/${id}/accelerate`, {
+//         method: 'POST',
+//         headers: {
+//             'Content-Type': 'application/json'
+//         }
+//     })
+//     .then(response => {
+//         if (!response.ok) {
+//             console.error(`HTTP error! Status: ${response.status}`);
+//         }
+//         return response;
+//     })
+//     .catch(error => {
+//         console.error(`Failed to accelerate race with ID ${id}:`, error);
+//     });
+// }
+
 function accelerate(id) {
     console.log(`Sending acceleration request to server for race with ID: ${id}`);
 
-    return fetch(`${SERVER}/api/races/${id}/accelerate`, {
+    fetch(`${SERVER}/api/races/${id}/accelerate`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -452,9 +579,33 @@ function accelerate(id) {
         if (!response.ok) {
             console.error(`HTTP error! Status: ${response.status}`);
         }
-        return response;
     })
     .catch(error => {
         console.error(`Failed to accelerate race with ID ${id}:`, error);
     });
+}
+
+async function handleCreateRace() {
+    console.log("in create race");
+
+    // Render starting UI
+    renderAt('#race', renderRaceStartView(store.track_name));
+
+    // Get player_id and track_id from the store
+    const player_id = store.player_id;
+    const track_id = store.track_id;
+
+    // Create the race
+    const race = await createRace(player_id, track_id);
+    console.log("RACE: ", race);
+    store.race_id = race.ID;
+
+    // Start the countdown
+    await runCountdown();
+
+    // Start the race
+    await startRace(store.race_id); // Await the race start
+
+    // Run the race
+    await runRace(store.race_id);
 }
